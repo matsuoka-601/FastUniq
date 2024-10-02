@@ -1,5 +1,5 @@
 # FastUniq
-`FastUniq` is a extremely fast string deduplication library using a parallel hash table.
+`FastUniq` is a header-only library for extremely fast string deduplication using a parallelized hash table.
 
 `sort <input file> | uniq` is often used as a one liner for string deduplication. 
 But if your goal is only deduplication and you don't need a sorted output, you can go much faster! 
