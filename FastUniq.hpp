@@ -258,8 +258,8 @@ namespace FastUniq {
     }
 
     // Dedupliate newline separated strings in the input file
-    // and write deduplicated strings to stdout
-    void Uniquify(const char *inputFile, u32 threadNum = 1) {
+    // and write deduplicated strings to stdout.
+    u32 Uniquify(const char *inputFile, u32 threadNum = 1) {
         // TODO : error handling
         int fd = open(inputFile, O_RDONLY);
         if (fd == 1) {
@@ -305,5 +305,7 @@ namespace FastUniq {
             int thread_id = omp_get_thread_num();
             ProcessChunk(ht, chunks[thread_id].first, chunks[thread_id].second, stdoutMutex);
         }
+
+        return ht.Size();
     }
 }
