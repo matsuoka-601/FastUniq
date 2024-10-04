@@ -223,7 +223,6 @@ namespace FastUniq {
         u32 bufCapacity = 1024;
         u32 currentBufBytes = 0;
 
-        auto start = std::chrono::system_clock::now();
         while (currentPtr - inputChunk < chunkLen) {
             // Batchfy hashing & inserting
             u32 i;
@@ -248,13 +247,9 @@ namespace FastUniq {
                 }
             }
         }
-        auto end = std::chrono::system_clock::now();
-
 
         std::unique_lock<std::mutex> lock(stdoutMutex);
         write(STDOUT_FILENO, threadBuf, currentBufBytes);
-        std::cerr << "thread " << omp_get_thread_num() << ": " << 
-            std::chrono::duration_cast<std::chrono::milliseconds>(end-start).count() << "ms\n";
     }
 
     const char* closestNewline(const char* input) {
