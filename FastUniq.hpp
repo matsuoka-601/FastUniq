@@ -259,7 +259,7 @@ namespace FastUniq {
 
     // Dedupliate newline separated strings in the input file
     // and write deduplicated strings to stdout
-    void Uniquify(const char *inputFile) {
+    void Uniquify(const char *inputFile, u32 threadNum = 1) {
         // TODO : error handling
         int fd = open(inputFile, O_RDONLY);
         if (fd == 1) {
@@ -276,16 +276,11 @@ namespace FastUniq {
             exit(1);
         }
 
-#ifdef SINGLE
-        u32 num_threads = 1;
-#else
-        u32 num_threads = omp_get_num_procs();
-#endif
-        ParallelHashTable ht(num_threads);
+        ParallelHashTable ht(threadNum);
 
         std::mutex stdoutMutex;
 
-        u32 perChunkLen = fileSize / num_threads;
+        u32 perChunkLen = fileSize / threadNum;
         if (perChunkLen == 0) { // In case of fileSize < num_threads
             ProcessChunk(ht, input, fileSize, stdoutMutex);
             return;
@@ -294,8 +289,8 @@ namespace FastUniq {
         const char *inputEnd = input + fileSize;
         std::vector<std::pair<const char*, u32>> chunks;
         // Divide the input equally into multiple chunks
-        for (u32 i = 0; i < num_threads; i++) { // TODO : Handle edge cases
-            if (i == num_threads - 1) {
+        for (u32 i = 0; i < threadNum; i++) { // TODO : Handle edge cases
+            if (i == threadNum - 1) {
                 chunks.push_back({ prev, inputEnd - prev });
             } else {
                 const char* next = closestNewline(prev + perChunkLen);
@@ -304,7 +299,7 @@ namespace FastUniq {
             }
         }
 
-        omp_set_num_threads(num_threads);
+        omp_set_num_threads(threadNum);
         #pragma omp parallel 
         {
             int thread_id = omp_get_thread_num();
