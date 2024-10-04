@@ -28,8 +28,12 @@ namespace FastUniq {
         u32 size;
         u64 *data;
 
+        inline u32 CalcSlotIdx(u64 hash) {
+            return (hash >> 32) % capacity;
+        }
+
         inline bool InsertImpl(u64 hash) {
-            u32 i = (hash >> 32) % capacity;
+            u32 i = CalcSlotIdx(hash);
             for (; ; i = (i + 1) % capacity) {
                 if (data[i] == EMPTY) { 
                     data[i] = hash;
@@ -70,7 +74,7 @@ namespace FastUniq {
         }
 
         bool Find(u64 hash) {
-            u32 i = (hash >> 32) % capacity;
+            u32 i = CalcSlotIdx(hash);
             for (; ; i = (i + 1) % capacity) {
                 if (data[i] == EMPTY) { 
                     return false;
@@ -94,8 +98,8 @@ namespace FastUniq {
             return size;
         }
 
-        void Prefetch(u64 hash) {
-            u32 i = (hash >> 32) % capacity;
+        inline void Prefetch(u64 hash) {
+            u32 i = CalcSlotIdx(hash);
             __builtin_prefetch(data + i);
         }
     };
@@ -112,13 +116,17 @@ namespace FastUniq {
         std::vector<Bucket> buckets;
 
         static constexpr u32 BUCKETS_THREADS_FACTOR = 64;
+
+        inline u32 CalcBucketIdx(u64 hash) {
+            return (hash & ((1LL << 32) - 1)) % buckets.size();
+        }
     public:
         ParallelHashTable(u32 num_threads) {
             buckets.resize(num_threads * BUCKETS_THREADS_FACTOR);
         }
 
         bool Insert(u64 hash) {
-            u32 bucketIdx = (hash & ((1LL << 32) - 1)) % buckets.size(); 
+            u32 bucketIdx = CalcBucketIdx(hash);
             Bucket &bucket = buckets[bucketIdx];
 
             std::shared_lock<std::shared_mutex> readLock(bucket.mtx);
@@ -136,8 +144,8 @@ namespace FastUniq {
             }
         }
 
-        void Prefetch(u64 hash) {
-            u32 bucketIdx = (hash & ((1LL << 32) - 1)) % buckets.size(); 
+        inline void Prefetch(u64 hash) {
+            u32 bucketIdx = CalcBucketIdx(hash);
             Bucket &bucket = buckets[bucketIdx];
             bucket.table.Prefetch(hash);
         }
