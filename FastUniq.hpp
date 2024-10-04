@@ -259,7 +259,7 @@ namespace FastUniq {
 
     // Dedupliate newline separated strings in the input file
     // and write deduplicated strings to stdout
-    void Uniquefy(const char *inputFile) {
+    void Uniquify(const char *inputFile) {
         // TODO : error handling
         int fd = open(inputFile, O_RDONLY);
         if (fd == 1) {
