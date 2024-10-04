@@ -283,7 +283,7 @@ namespace FastUniq {
         u32 perChunkLen = fileSize / threadNum;
         if (perChunkLen == 0) { // In case of fileSize < num_threads
             ProcessChunk(ht, input, fileSize, stdoutMutex);
-            return;
+            return ht.Size();
         }
         const char *prev = input;
         const char *inputEnd = input + fileSize;
