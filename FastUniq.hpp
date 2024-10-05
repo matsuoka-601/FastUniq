@@ -250,6 +250,7 @@ namespace FastUniq {
 
         std::unique_lock<std::mutex> lock(stdoutMutex);
         write(STDOUT_FILENO, threadBuf, currentBufBytes);
+        free(threadBuf);
     }
 
     const char* closestNewline(const char* input) {
@@ -305,6 +306,8 @@ namespace FastUniq {
             int thread_id = omp_get_thread_num();
             ProcessChunk(ht, chunks[thread_id].first, chunks[thread_id].second, stdoutMutex);
         }
+
+        munmap((void*)input, fileSize);
 
         return ht.Size();
     }
