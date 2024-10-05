@@ -9,6 +9,7 @@
 #include <filesystem>
 #include <cassert>
 #include <omp.h>
+#include <functional>
 
 // Bench the scalability changing the number of threads
 
@@ -35,22 +36,29 @@ int main(int argc, char** argv) {
 
     std::cerr << "Generating input strings...\n";
 
-    std::unordered_set<std::string> uniqueStringSet;
+    std::unordered_set<uint64_t> uniqueStringsHash;
+    char **uniqueStrings = (char **)malloc(sizeof(char*) * u);
+    unsigned *len = (unsigned*)malloc(sizeof(unsigned) * u);
 
     std::random_device seed;
     std::mt19937 rng(seed());
     for (unsigned i = 0; i < u; i++) {
         unsigned counter = 0;
         while (true) {
-            std::string s = "";
             unsigned length = rng() % m + 1;
+            std::string s = "";
             for (unsigned j = 0; j < length; j++) {
                 s.push_back(rng() % 26 + 'a');
             }
-            if (uniqueStringSet.find(s) != uniqueStringSet.end()) {
+            if (uniqueStringsHash.find(std::hash<std::string>()(s)) != uniqueStringsHash.end()) {
                 continue;
             } else {
-                uniqueStringSet.insert(s);
+                uniqueStringsHash.insert(std::hash<std::string>()(s));
+                uniqueStrings[i] = (char*)malloc(length + 1);
+                memcpy(uniqueStrings[i], s.data(), length);
+                uniqueStrings[i][length] = '\0';
+                len[i] = length;
+                s.clear();
                 break;
             }
 
@@ -62,25 +70,6 @@ int main(int argc, char** argv) {
         }
     }
 
-    assert(uniqueStringSet.size() == u);
-
-    std::vector<std::string> uniqueStrings(uniqueStringSet.begin(), uniqueStringSet.end());
-    std::vector<std::string> inputStrings(l);
-
-    std::vector<unsigned> indices(l);
-    std::iota(indices.begin(), indices.end(), 0);
-    std::shuffle(indices.begin(), indices.end(), rng);
-
-    for (unsigned i = 0; i < l; i++) {
-        if (i < u) {
-            inputStrings[indices[i]] = uniqueStrings[i]; 
-        } else {
-            inputStrings[indices[i]] = uniqueStrings[rng() % u];
-        }
-    }
-    
-    std::cerr << "Finished generating input strings.\n";
-
     char fileName[] = "/tmp/tempfileXXXXXX";
     int fd = mkstemp(fileName);
     if (fd == -1) {
@@ -89,8 +78,9 @@ int main(int argc, char** argv) {
     }
 
     std::ofstream tmpFile(fileName);
-    for (const auto &line: inputStrings) {
-        tmpFile << line << "\n";
+    for (unsigned i = 0; i < l; i++) {
+        std::string s(uniqueStrings[i % u], len[i % u]);
+        tmpFile << s << "\n";
     }
 
     unsigned fileSize = std::filesystem::file_size(fileName);
@@ -109,12 +99,13 @@ int main(int argc, char** argv) {
             auto end = std::chrono::high_resolution_clock::now();
             runTimeSum += std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
             if (uniqueCount != u) {
-                std::cerr << "Error: The number of unique strings is incorrect.";
+                std::cerr << "Error: The number of unique strings is incorrect: ";
+                std::cerr << "Correct: " << u << " Returned answer: " << uniqueCount << "\n";
                 return 1;
             }
         }
         double throughput = fileSize / (runTimeSum / BENCH_REPEAT) / 1e3; // in megabytes
-        std::cerr << throughput << " MB/s\n";
+        std::cerr << throughput << " MB/s (average: " << (runTimeSum / BENCH_REPEAT) << " ms)\n";
     }
 
     std::remove(fileName);
