@@ -79,8 +79,14 @@ int main(int argc, char** argv) {
 
     std::ofstream tmpFile(fileName);
     for (unsigned i = 0; i < l; i++) {
-        std::string s(uniqueStrings[i % u], len[i % u]);
-        tmpFile << s << "\n";
+        if (i < u) {
+            std::string s(uniqueStrings[i], len[i]);
+            tmpFile << s << "\n";
+        } else {
+            unsigned idx = rng() % u;
+            std::string s(uniqueStrings[idx], len[idx]);
+            tmpFile << s << "\n";
+        }
     }
 
     unsigned fileSize = std::filesystem::file_size(fileName);
