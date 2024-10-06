@@ -10,6 +10,7 @@ In this repository, we investigate how much faster a string uniquifier that impl
 - Batching hash calculation and insertion into hash table
 - Prefetching for hash table accesses
 
+**Note that `FastUniq` cannot uniquify two strings which have same hash values.** Since 64-bit hash is used, the chance of two strings having same hashes is very low, but not zero. See "Probability of hash collision" section for detail.
 ## How to use `FastUniq` in your program
 In order to use `FastUniq` in your program, include `FastUniq.hpp` and give `-mavx2, -maes, -fopenmp` flags to your compiler when compiling the program. For maximum performance, it's recommended to give either `-O3` or `-Ofast`.
 
