@@ -19,6 +19,7 @@ namespace FastUniq {
     using u8x32 = __m256i;
     using u8x16 = __m128i;
     constexpr u32 BATCHSIZE = 500;
+    constexpr u32 PREFETCH_STRIDE = 16;
 
     class HashTable {
         static constexpr float LOAD_FACTOR = 0.5;
@@ -234,6 +235,7 @@ namespace FastUniq {
 
             u32 bufLen = i;
             for (i = 0; i < bufLen; i++) {
+                if (i + PREFETCH_STRIDE < bufLen) ht.Prefetch(hashBuffer[i + PREFETCH_STRIDE]);
                 if (ht.Insert(hashBuffer[i])) {
                     while (currentBufBytes + lenBuffer[i] + 1 >= bufCapacity) {
                         char* newThreadBuf = (char*)malloc(2 * bufCapacity);
