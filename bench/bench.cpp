@@ -77,6 +77,8 @@ int main(int argc, char** argv) {
         return 1;
     }
 
+    std::cerr << fileName << "\n";
+
     std::ofstream tmpFile(fileName);
     for (unsigned i = 0; i < l; i++) {
         if (i < u) {
