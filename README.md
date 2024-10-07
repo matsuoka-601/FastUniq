@@ -23,11 +23,11 @@ The following graph shows the results of performance measurements with the numbe
 
 ![](img/scalability.png)
 
-The benchmark was performed on a machine with a Ryzen 5825U CPU (8 cores, 16 threads) and 16GB of RAM. Maximum length of a string is 30. 
+The benchmark was performed on a machine with a Ryzen 7 5825U CPU (8 cores, 16 threads) and 16GB of RAM. Maximum length of a string is 30. 
 
 We can see the following performance characteristics from the graph.
 
-- The performance with 16 threads is found to be approximately three to four times faster compared to single-thread performance.
+- The performance with 16 threads is found to be approximately 3~4x compared to single-thread performance.
 - The performance degrades as the number of unique strings increases.
-    - This is likely due to the fact that the number of insertions into the hash table increases as the number of unique strings increases. Insertion into a hash table requires exclusive access to a bucket and other threads should wait for that insertion, which negatively impacts performance.
+    - This is likely due to the fact that the number of insertions into the hash table increases as the number of unique strings increases. Insertion into a hash table requires an exclusive access to a bucket and other threads should wait for that insertion, which negatively impacts performance.
 - FastUniq is constantly faster than `sort | uniq` even when single threaded.
