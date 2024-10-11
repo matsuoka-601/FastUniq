@@ -307,6 +307,12 @@ namespace FastUniq {
         struct stat fileStat;
         fstat(fd, &fileStat);
         u32 fileSize = fileStat.st_size;
+
+        if (fileSize == 0) {
+            close(fd);
+            return 0;
+        }
+
         const char* input = (const char*)mmap(nullptr, fileSize, PROT_READ, MAP_PRIVATE | MAP_POPULATE, fd, 0);
         if (input == MAP_FAILED) {
             perror("mmap");
@@ -332,6 +338,7 @@ namespace FastUniq {
         }
 
         munmap((void*)input, fileSize);
+        close(fd);
 
         return ht.Size();
     }
