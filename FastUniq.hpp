@@ -255,9 +255,44 @@ namespace FastUniq {
         free(threadBuf);
     }
 
-    const char* closestNewline(const char* input) {
-        while(*input != '\n') input++;
+    const char* ClosestNewline(const char* input, const char* end) {
+        while(input < end && *input != '\n') input++;
         return input;
+    }
+
+    // Divide the input equally
+    std::vector<std::pair<const char*, u32>> DivideInput(
+        const char* beg, const char* end, u32 threadNum
+    ) {
+        u32 fileSize = end - beg;
+        u32 perChunkLen = fileSize / threadNum;
+
+        std::vector<std::pair<const char*, u32>> ret;
+
+        const char* prev = beg;
+        u32 i = 0;
+        for (; i < threadNum; i++) {
+            if (i == threadNum - 1) {
+                ret.push_back(std::make_pair(prev, end - prev));
+            } else {
+                const char* next = ClosestNewline(prev + perChunkLen, end);
+                if (next == end) {
+                    ret.push_back(std::make_pair(prev, end - prev));
+                    break;
+                } else {
+                    ret.push_back(std::make_pair(prev, (next + 1) - prev));
+                    prev = next + 1;
+                }
+            }
+        }
+
+        if (i != threadNum) {
+            for (; i < threadNum; i++) {
+                ret.push_back(std::make_pair((const char*)NULL, 0U)); // Just add an empty chunk
+            }
+        }
+
+        return ret;
     }
 
     // Dedupliate newline separated strings in the input file
@@ -283,30 +318,17 @@ namespace FastUniq {
 
         std::mutex stdoutMutex;
 
-        u32 perChunkLen = fileSize / threadNum;
-        if (perChunkLen == 0) { // In case of fileSize < num_threads
-            ProcessChunk(ht, input, fileSize, stdoutMutex);
-            return ht.Size();
-        }
-        const char *prev = input;
-        const char *inputEnd = input + fileSize;
-        std::vector<std::pair<const char*, u32>> chunks;
-        // Divide the input equally into multiple chunks
-        for (u32 i = 0; i < threadNum; i++) { // TODO : Handle edge cases
-            if (i == threadNum - 1) {
-                chunks.push_back({ prev, inputEnd - prev });
-            } else {
-                const char* next = closestNewline(prev + perChunkLen);
-                chunks.push_back({ prev, (next + 1) - prev });
-                prev = next + 1;
-            }
-        }
+        auto chunks = DivideInput(input, input + fileSize, threadNum);
 
         omp_set_num_threads(threadNum);
         #pragma omp parallel 
         {
             int thread_id = omp_get_thread_num();
-            ProcessChunk(ht, chunks[thread_id].first, chunks[thread_id].second, stdoutMutex);
+            const char* beg = chunks[thread_id].first;
+            u32 len = chunks[thread_id].second;
+            if (len > 0) {
+                ProcessChunk(ht, beg, len, stdoutMutex);
+            }
         }
 
         munmap((void*)input, fileSize);
