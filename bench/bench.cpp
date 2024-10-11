@@ -77,22 +77,21 @@ int main(int argc, char** argv) {
         return 1;
     }
 
-    std::cerr << fileName << "\n";
-
-    std::ofstream tmpFile(fileName);
-    for (unsigned i = 0; i < l; i++) {
-        if (i < u) {
-            std::string s(uniqueStrings[i], len[i]);
-            tmpFile << s << "\n";
-        } else {
-            unsigned idx = rng() % u;
-            std::string s(uniqueStrings[idx], len[idx]);
-            tmpFile << s << "\n";
+    {
+        std::ofstream tmpFile(fileName);
+        for (unsigned i = 0; i < l; i++) {
+            if (i < u) {
+                std::string s(uniqueStrings[i], len[i]);
+                tmpFile << s << "\n";
+            } else {
+                unsigned idx = rng() % u;
+                std::string s(uniqueStrings[idx], len[idx]);
+                tmpFile << s << "\n";
+            }
         }
     }
 
     unsigned fileSize = std::filesystem::file_size(fileName);
-    tmpFile.close();
 
     freopen("/dev/null", "w", stdout);
 
