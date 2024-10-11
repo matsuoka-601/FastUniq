@@ -18,6 +18,8 @@ Example:
 ```
 g++ your_program.cpp -mavx2 -maes -O3 -fopenmp
 ```
+
+(TODO : Provide a detail about the API)
 ## Benchmark
 The following graph shows the results of performance measurements with the number of strings fixed at 30 million and with different numbers of threads. 
 
