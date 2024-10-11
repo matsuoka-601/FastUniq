@@ -300,7 +300,7 @@ namespace FastUniq {
     u32 Uniquify(const char *inputFile, u32 threadNum = 1) {
         // TODO : error handling
         int fd = open(inputFile, O_RDONLY);
-        if (fd == 1) {
+        if (fd == -1) {
             perror("open");
             exit(1);
         }
