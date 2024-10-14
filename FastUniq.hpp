@@ -23,6 +23,7 @@ namespace FastUniq {
         constexpr u32 BATCHSIZE = 500;
         constexpr u32 PREFETCH_STRIDE = 16;
 
+
         class HashTable {
             static constexpr float LOAD_FACTOR = 0.5;
             static constexpr u32 INIT_CAPACITY = 64;
@@ -210,6 +211,47 @@ namespace FastUniq {
             }
         }
 
+        std::vector<std::string> ProcessChunkVec(
+            ParallelHashTable &ht,
+            const char* inputChunk,
+            u32 chunkLen
+        ) {
+            const char* currentPtr = inputChunk;
+
+            u64 hashBuffer[BATCHSIZE];
+            u32 lenBuffer[BATCHSIZE];
+            const char* ptrBuffer[BATCHSIZE];
+
+            std::vector<std::string> uniqueStrings;
+
+            while (currentPtr - inputChunk < chunkLen) {
+                u32 uniqueCount = 0;
+
+                // Batchfy hashing & inserting
+                u32 i;
+                for (i = 0; i < BATCHSIZE && currentPtr - inputChunk < chunkLen; i++) {
+                    Hash(currentPtr, hashBuffer[i], lenBuffer[i]);
+                    ptrBuffer[i] = currentPtr;
+                    currentPtr += lenBuffer[i] + 1;
+                }
+
+                u32 bufLen = i;
+                for (i = 0; i < bufLen; i++) {
+                    if (i + PREFETCH_STRIDE < bufLen) ht.Prefetch(hashBuffer[i + PREFETCH_STRIDE]);
+                    if (ht.Insert(hashBuffer[i])) {
+                        uniqueCount++;
+                    }
+                }
+
+                for (i = 0; i < uniqueCount; i++) {
+                    // ここを push_back に変えたらどれくらい速くなるか？
+                    uniqueStrings.emplace_back(ptrBuffer[i], lenBuffer[i]);
+                }
+            }
+
+            return uniqueStrings;
+        }
+
         void ProcessChunk(
             ParallelHashTable &ht, 
             const char* inputChunk, 
@@ -298,9 +340,94 @@ namespace FastUniq {
         }
     } // namespace Internal
 
+    std::vector<std::string> ParallelMerge(
+        std::vector<std::vector<std::string>> &uniqueStrings
+    ) {
+        std::vector<std::string> result;
+
+        std::vector<u32> accum;
+        accum.push_back(0);
+        for (u32 i = 0; i < uniqueStrings.size(); i++) {
+            accum.push_back(accum.back() + uniqueStrings[i].size());
+        }
+
+        result.resize(accum.back());
+
+        omp_set_num_threads(uniqueStrings.size());
+        #pragma omp parallel
+        {
+            int threadId = omp_get_thread_num();
+
+            std::move(
+                uniqueStrings[threadId].begin(),
+                uniqueStrings[threadId].end(),
+                result.begin() + accum[threadId]
+            );
+        }
+
+        return result;
+    }
+
     // Dedupliate newline separated strings in the input file
     // and write deduplicated strings to stdout.
-    u32 Uniquify(const char *inputFile, u32 threadNum = 1) {
+    std::vector<std::string> Uniquify(const char *inputFile, u32 threadNum = 1) {
+        // TODO : error handling
+        int fd = open(inputFile, O_RDONLY);
+        if (fd == -1) {
+            perror("open");
+            exit(1);
+        }
+        struct stat fileStat;
+        fstat(fd, &fileStat);
+        u32 fileSize = fileStat.st_size;
+
+        if (fileSize == 0) {
+            close(fd);
+            return {};
+        }
+
+        const char* input = (const char*)mmap(nullptr, fileSize, PROT_READ, MAP_PRIVATE | MAP_POPULATE, fd, 0);
+        if (input == MAP_FAILED) {
+            perror("mmap");
+            close(fd);
+            exit(1);
+        }
+
+        Internal::ParallelHashTable ht(threadNum);
+
+        std::mutex resultMutex;
+
+        auto chunks = Internal::DivideInput(input, input + fileSize, threadNum);
+
+        std::vector<std::vector<std::string>> results;
+        u32 resultCount = 0;
+
+        omp_set_num_threads(threadNum);
+        results.resize(threadNum);
+
+        #pragma omp parallel
+        {
+            int threadId = omp_get_thread_num();
+            const char* beg = chunks[threadId].first;
+            u32 len = chunks[threadId].second;
+
+            if (len > 0) {
+                results[threadId] = Internal::ProcessChunkVec(ht, beg, len);
+            }
+            resultCount += results[threadId].size();
+        }
+
+        auto mergedResult = ParallelMerge(results);
+
+        munmap((void*)input, fileSize);
+        close(fd);
+
+        return mergedResult;
+    }
+
+    // Dedupliate newline separated strings in the input file
+    // and write deduplicated strings to stdout.
+    u32 UniquifyToStdout(const char *inputFile, u32 threadNum = 1) {
         // TODO : error handling
         int fd = open(inputFile, O_RDONLY);
         if (fd == -1) {

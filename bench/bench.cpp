@@ -102,7 +102,7 @@ int main(int argc, char** argv) {
         // Take average of BENCH_REPEAT times
         for (unsigned i = 0; i < BENCH_REPEAT; i++) {
             auto start = std::chrono::high_resolution_clock::now();
-            unsigned uniqueCount = FastUniq::Uniquify(fileName, threadNum);
+            unsigned uniqueCount = FastUniq::UniquifyToStdout(fileName, threadNum);
             auto end = std::chrono::high_resolution_clock::now();
             runTimeSum += std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
             if (uniqueCount != u) {
