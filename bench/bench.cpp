@@ -18,6 +18,7 @@ int main(int argc, char** argv) {
     p.add<unsigned>("lines", 'l', "Number of lines", false, 30000000, cmdline::range(1, INT_MAX));
     p.add<unsigned>("max-length", 'm', "Maximum length of a string", false, 16, cmdline::range(1, INT_MAX));
     p.add<unsigned>("unique-strings", 'u', "Number of unique strings", false, 1000000, cmdline::range(1, INT_MAX));
+    p.add("vector", 'v', "Use Uniquify function, which returns a vector of unique strings");
     p.add("help", 'h', "print help");
 
     if (!p.parse(argc, argv) || p.exist("help")) {
@@ -25,9 +26,9 @@ int main(int argc, char** argv) {
         return 1;
     }
 
-    unsigned l = p.get<unsigned>("lines");
-    unsigned m = p.get<unsigned>("max-length");
-    unsigned u = p.get<unsigned>("unique-strings");
+    unsigned    l = p.get<unsigned>("lines");
+    unsigned    m = p.get<unsigned>("max-length");
+    unsigned    u = p.get<unsigned>("unique-strings");
 
     if (l < u) {
         std::cerr << "Error: Invalid input. The number of unique strings (-u) should be equal to or less than the number of lines (-l)\n";
@@ -100,17 +101,32 @@ int main(int argc, char** argv) {
         std::cerr << threadNum << ((threadNum == 1) ? " thread : " : " threads : ");
         double runTimeSum = 0;
         // Take average of BENCH_REPEAT times
-        for (unsigned i = 0; i < BENCH_REPEAT; i++) {
-            auto start = std::chrono::high_resolution_clock::now();
-            unsigned uniqueCount = FastUniq::UniquifyToStdout(fileName, threadNum);
-            auto end = std::chrono::high_resolution_clock::now();
-            runTimeSum += std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
-            if (uniqueCount != u) {
-                std::cerr << "Error: The number of unique strings is incorrect: ";
-                std::cerr << "Correct: " << u << " Returned answer: " << uniqueCount << "\n";
-                return 1;
+        if (p.exist("vector")) { 
+            for (unsigned i = 0; i < BENCH_REPEAT; i++) {
+                auto start = std::chrono::high_resolution_clock::now();
+                std::vector<std::string> uniqueCount = FastUniq::Uniquify(fileName, threadNum);
+                auto end = std::chrono::high_resolution_clock::now();
+                runTimeSum += std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
+                if (uniqueCount.size() != u) {
+                    std::cerr << "Error: The number of unique strings is incorrect: ";
+                    std::cerr << "Correct: " << u << " Returned answer: " << uniqueCount.size() << "\n";
+                    return 1;
+                }
+            }
+        } else {
+            for (unsigned i = 0; i < BENCH_REPEAT; i++) {
+                auto start = std::chrono::high_resolution_clock::now();
+                unsigned uniqueCount = FastUniq::UniquifyToStdout(fileName, threadNum);
+                auto end = std::chrono::high_resolution_clock::now();
+                runTimeSum += std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
+                if (uniqueCount != u) {
+                    std::cerr << "Error: The number of unique strings is incorrect: ";
+                    std::cerr << "Correct: " << u << " Returned answer: " << uniqueCount << "\n";
+                    return 1;
+                }
             }
         }
+
         double throughput = fileSize / (runTimeSum / BENCH_REPEAT) / 1e3; // in megabytes
         std::cerr << throughput << " MB/s (average: " << (runTimeSum / BENCH_REPEAT) << " ms)\n";
     }
