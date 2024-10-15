@@ -211,7 +211,7 @@ namespace FastUniq {
             }
         }
 
-        std::vector<std::string> ProcessChunkVec(
+        std::vector<std::pair<const char*, u32>> ProcessChunkVec(
             ParallelHashTable &ht,
             const char* inputChunk,
             u32 chunkLen
@@ -222,7 +222,7 @@ namespace FastUniq {
             u32 lenBuffer[BATCHSIZE];
             const char* ptrBuffer[BATCHSIZE];
 
-            std::vector<std::string> uniqueStrings;
+            std::vector<std::pair<const char*, u32>> uniqueStrings;
 
             while (currentPtr - inputChunk < chunkLen) {
                 u32 uniqueCount = 0;
@@ -244,7 +244,6 @@ namespace FastUniq {
                 }
 
                 for (i = 0; i < uniqueCount; i++) {
-                    // ここを push_back に変えたらどれくらい速くなるか？
                     uniqueStrings.emplace_back(ptrBuffer[i], lenBuffer[i]);
                 }
             }
@@ -341,7 +340,7 @@ namespace FastUniq {
     } // namespace Internal
 
     std::vector<std::string> ParallelMerge(
-        std::vector<std::vector<std::string>> &uniqueStrings
+        std::vector<std::vector<std::pair<const char*, u32>>> &uniqueStrings
     ) {
         std::vector<std::string> result;
 
@@ -357,12 +356,10 @@ namespace FastUniq {
         #pragma omp parallel
         {
             int threadId = omp_get_thread_num();
-
-            std::move(
-                uniqueStrings[threadId].begin(),
-                uniqueStrings[threadId].end(),
-                result.begin() + accum[threadId]
-            );
+            auto dst = result.begin() + accum[threadId];
+            for (auto &src: uniqueStrings[threadId]) {
+                *(dst++) = std::string(src.first, src.second);
+            }
         }
 
         return result;
@@ -399,7 +396,7 @@ namespace FastUniq {
 
         auto chunks = Internal::DivideInput(input, input + fileSize, threadNum);
 
-        std::vector<std::vector<std::string>> results;
+        std::vector<std::vector<std::pair<const char*, u32>>> results;
         u32 resultCount = 0;
 
         omp_set_num_threads(threadNum);
