@@ -24,7 +24,7 @@ Currently you can use the following APIs.
     - Currently this is slower than `UniquifyToStdout` because of the merging of the results from each thread.
 - `void UniquifyToStdout(const char* inputFile)` : Deduplicates newline-separated strings in `inputFile` and outputs deduplicated strings to stdout.
 ## Benchmark
-The following graph shows the results of performance measurements with the number of strings fixed at 30 million and with different numbers of threads. Benchmark is performed using `UniquifyToStdout` and sending the output to `/dev/null`.
+The following graph shows the results of performance measurements with the number of strings fixed at 30 million and with different numbers of threads. Benchmark is performed using `UniquifyToStdout` and sending the output to `/dev/null`. But as always, take the results with a grain of salt. Always measure for your own workload.
 
 ![](img/scalability.png)
 
